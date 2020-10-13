@@ -160,6 +160,38 @@ impl From<ExecutionResult> for sys::FizzyExecutionResult {
 }
 
 impl Instance {
+    fn checked_memory_range(&self, offset: u32) -> core::ops::Range<usize> {
+        let offset = offset as usize;
+        let size = 0 as usize;
+        offset..offset + size
+    }
+
+    pub fn memory_size(&self) -> usize {
+        unsafe { sys::fizzy_get_instance_memory_size(self.0.as_ptr()) }
+    }
+
+    pub fn memory_get_into(&mut self, offset: u32, target: &mut [u8]) -> Result<(), ()> {
+        let mem = unsafe {
+            std::slice::from_raw_parts(
+                sys::fizzy_get_instance_memory_data(self.0.as_ptr()),
+                sys::fizzy_get_instance_memory_size(self.0.as_ptr()),
+            )
+        };
+        target.copy_from_slice(&mem[self.checked_memory_range(offset)]);
+        Ok(())
+    }
+
+    pub fn memory_set(&mut self, offset: u32, value: &[u8]) -> Result<(), ()> {
+        let mem = unsafe {
+            std::slice::from_raw_parts_mut(
+                sys::fizzy_get_instance_memory_data(self.0.as_ptr()),
+                sys::fizzy_get_instance_memory_size(self.0.as_ptr()),
+            )
+        };
+        mem[self.checked_memory_range(offset)].copy_from_slice(value);
+        Ok(())
+    }
+
     /// Find index of exported function by name.
     pub fn find_exported_function_index(&self, name: &str) -> Option<u32> {
         let module = unsafe { sys::fizzy_get_instance_module(self.0.as_ptr()) };
