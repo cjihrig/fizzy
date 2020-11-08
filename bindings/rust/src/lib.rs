@@ -9,6 +9,23 @@ mod sys;
 use std::ffi::CString;
 use std::ptr::NonNull;
 
+#[derive(Debug)]
+pub struct Error(String);
+
+impl From<String> for Error {
+    fn from(error: String) -> Self {
+        Error { 0: error }
+    }
+}
+
+impl From<&str> for Error {
+    fn from(error: &str) -> Self {
+        Error {
+            0: error.to_string(),
+        }
+    }
+}
+
 /// Parse and validate the input according to WebAssembly 1.0 rules. Returns true if the supplied input is valid.
 pub fn validate<T: AsRef<[u8]>>(input: T) -> bool {
     unsafe { sys::fizzy_validate(input.as_ref().as_ptr(), input.as_ref().len()) }
@@ -25,10 +42,10 @@ impl Drop for Module {
 }
 
 /// Parse and validate the input according to WebAssembly 1.0 rules.
-pub fn parse<T: AsRef<[u8]>>(input: &T) -> Result<Module, ()> {
+pub fn parse<T: AsRef<[u8]>>(input: &T) -> Result<Module, Error> {
     let ptr = unsafe { sys::fizzy_parse(input.as_ref().as_ptr(), input.as_ref().len()) };
     if ptr.is_null() {
-        return Err(());
+        return Err("parse() failure".into());
     }
     Ok(Module { 0: ptr })
 }
@@ -45,10 +62,8 @@ impl Drop for Instance {
 impl Module {
     /// Create an instance of a module.
     // TODO: support imported functions
-    pub fn instantiate(self) -> Result<Instance, ()> {
-        if self.0.is_null() {
-            return Err(());
-        }
+    pub fn instantiate(self) -> Result<Instance, Error> {
+        assert!(!self.0.is_null());
         let ptr = unsafe {
             sys::fizzy_instantiate(
                 self.0,
@@ -63,7 +78,7 @@ impl Module {
         // Forget Module (and avoid calling drop) because it has been consumed by instantiate (even if it failed).
         core::mem::forget(self);
         if ptr.is_null() {
-            return Err(());
+            return Err("instantiate() failure".into());
         }
         Ok(Instance {
             0: unsafe { NonNull::new_unchecked(ptr) },
