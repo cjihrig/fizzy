@@ -343,5 +343,9 @@ mod tests {
         let result = unsafe { instance.unsafe_execute(3, &[], 0) };
         assert!(result.trapped());
         assert!(!result.value().is_some());
+
+        // todo memory tests
+        assert_eq!(instance.memory_size(), 0);
+        //assert!(instance.memory_set(65536 * 2, &[1, 2, 3, 4]).is_ok());
     }
 }
