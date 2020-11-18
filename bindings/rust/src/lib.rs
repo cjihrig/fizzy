@@ -166,10 +166,12 @@ impl Instance {
         offset..offset + size
     }
 
+    /// Returns the current memory size, in bytes.
     pub fn memory_size(&self) -> usize {
         unsafe { sys::fizzy_get_instance_memory_size(self.0.as_ptr()) }
     }
 
+    /// Copies memory from `offset` to `target`, for the length of `target.len()`.
     pub fn memory_get_into(&mut self, offset: u32, target: &mut [u8]) -> Result<(), ()> {
         let mem = unsafe {
             std::slice::from_raw_parts(
@@ -181,14 +183,15 @@ impl Instance {
         Ok(())
     }
 
-    pub fn memory_set(&mut self, offset: u32, value: &[u8]) -> Result<(), ()> {
+    /// Copies memory from `source` to `offset`, for the length of `source.len()`.
+    pub fn memory_set(&mut self, offset: u32, source: &[u8]) -> Result<(), ()> {
         let mem = unsafe {
             std::slice::from_raw_parts_mut(
                 sys::fizzy_get_instance_memory_data(self.0.as_ptr()),
                 sys::fizzy_get_instance_memory_size(self.0.as_ptr()),
             )
         };
-        mem[self.checked_memory_range(offset)].copy_from_slice(value);
+        mem[self.checked_memory_range(offset)].copy_from_slice(source);
         Ok(())
     }
 
