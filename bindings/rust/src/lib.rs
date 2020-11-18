@@ -160,9 +160,15 @@ impl From<ExecutionResult> for sys::FizzyExecutionResult {
 }
 
 impl Instance {
-    fn checked_memory_range(&self, offset: u32) -> Result<core::ops::Range<usize>, ()> {
+    fn checked_memory_range(
+        &self,
+        offset: u32,
+        size: usize,
+    ) -> Result<core::ops::Range<usize>, ()> {
         let offset = offset as usize;
-        let size = 0 as usize;
+        if (offset + size) > self.memory_size() {
+            return Err(());
+        }
         Ok(offset..offset + size)
     }
 
@@ -179,7 +185,7 @@ impl Instance {
                 sys::fizzy_get_instance_memory_size(self.0.as_ptr()),
             )
         };
-        target.copy_from_slice(&mem[self.checked_memory_range(offset)?]);
+        target.copy_from_slice(&mem[self.checked_memory_range(offset, target.len())?]);
         Ok(())
     }
 
@@ -191,7 +197,7 @@ impl Instance {
                 sys::fizzy_get_instance_memory_size(self.0.as_ptr()),
             )
         };
-        mem[self.checked_memory_range(offset)?].copy_from_slice(source);
+        mem[self.checked_memory_range(offset, source.len())?].copy_from_slice(source);
         Ok(())
     }
 
