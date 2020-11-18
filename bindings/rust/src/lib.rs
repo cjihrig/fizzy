@@ -229,7 +229,13 @@ impl Instance {
         }
         // TODO: validate input types too
 
-        Ok(unsafe { self.unsafe_execute(func_idx, args, depth) })
+        let ret = unsafe { self.unsafe_execute(func_idx, args, depth) };
+        // Fail if output is expected, but none was returned.
+        if !ret.trapped() && (func_type.output != sys::FizzyValueTypeVoid) && !ret.value().is_some()
+        {
+            return Err(());
+        }
+        Ok(ret)
     }
 }
 
