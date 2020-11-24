@@ -144,6 +144,17 @@ typedef struct FizzyImportedFunction
     FizzyExternalFunction external_function;
 } FizzyImportedFunction;
 
+/// Imported global.
+typedef struct FizzyImportedGlobal
+{
+    /// Module name. NULL-terminated string. Cannot be NULL.
+    const char* module;
+    /// Function name. NULL-terminated string. Cannot be NULL.
+    const char* name;
+    /// External global, defining its value type, and a pointer to value.
+    FizzyExternalGlobal external_global;
+} FizzyImportedGlobal;
+
 /// Validate binary module.
 bool fizzy_validate(const uint8_t* wasm_binary, size_t wasm_binary_size);
 
@@ -258,14 +269,13 @@ FizzyInstance* fizzy_instantiate(const FizzyModule* module,
 /// Functions are matched to module's imports based on their module and name strings.
 ///
 /// @note
-/// Function expects @a imported_globals to be in the order of imports defined in the module.
-/// No validation is done on the number of globals passed in, nor on their order.
-/// When number of passed globals or their order is different from the one defined by the
-/// module, behaviour is undefined.
+/// Globals in @a imported_globals are allowed to be in any order and allowed to include some
+/// globals not required by the module.
+/// Globals are matched to module's imports based on their module and name strings.
 FizzyInstance* fizzy_resolve_instantiate(const FizzyModule* module,
     const FizzyImportedFunction* imported_functions, size_t imported_functions_size,
     const FizzyExternalTable* imported_table, const FizzyExternalMemory* imported_memory,
-    const FizzyExternalGlobal* imported_globals, size_t imported_globals_size);
+    const FizzyImportedGlobal* imported_globals, size_t imported_globals_size);
 
 /// Free resources associated with the instance.
 /// If passed pointer is NULL, has no effect.
