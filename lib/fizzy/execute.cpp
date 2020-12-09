@@ -5,6 +5,7 @@
 #include "execute.hpp"
 #include "asserts.hpp"
 #include "cxx20/bit.hpp"
+#include "instructions.hpp"
 #include "stack.hpp"
 #include "trunc_boundaries.hpp"
 #include "types.hpp"
@@ -475,13 +476,13 @@ void branch(const Code& code, OperandStack& stack, const uint8_t*& pc, uint32_t 
 }
 
 inline bool invoke_function(const FuncType& func_type, uint32_t func_idx, Instance& instance,
-    OperandStack& stack, int depth)
+    OperandStack& stack, int64_t& ticks, int depth)
 {
     const auto num_args = func_type.inputs.size();
     assert(stack.size() >= num_args);
     const auto call_args = stack.rend() - num_args;
 
-    const auto ret = execute(instance, func_idx, call_args, depth + 1);
+    const auto ret = execute(instance, func_idx, call_args, ticks, depth + 1);
     // Bubble up traps
     if (ret.trapped)
         return false;
@@ -501,7 +502,8 @@ inline bool invoke_function(const FuncType& func_type, uint32_t func_idx, Instan
 
 }  // namespace
 
-ExecutionResult execute(Instance& instance, FuncIdx func_idx, const Value* args, int depth)
+ExecutionResult execute(
+    Instance& instance, FuncIdx func_idx, const Value* args, int64_t& ticks, int depth)
 {
     assert(depth >= 0);
     if (depth > CallStackLimit)
@@ -511,7 +513,7 @@ ExecutionResult execute(Instance& instance, FuncIdx func_idx, const Value* args,
 
     assert(instance.module->imported_function_types.size() == instance.imported_functions.size());
     if (func_idx < instance.imported_functions.size())
-        return instance.imported_functions[func_idx].function(instance, args, depth);
+        return instance.imported_functions[func_idx].function(instance, args, ticks, depth);
 
     const auto& code = instance.module->get_code(func_idx);
     auto* const memory = instance.memory.get();
@@ -521,9 +523,15 @@ ExecutionResult execute(Instance& instance, FuncIdx func_idx, const Value* args,
 
     const uint8_t* pc = code.instructions.data();
 
+    const auto cost_table = get_instruction_cost_table();
+
     while (true)
     {
         const auto instruction = static_cast<Instr>(*pc++);
+
+        if ((ticks -= cost_table[static_cast<uint8_t>(instruction)]) < 0)
+            goto trap;
+
         switch (instruction)
         {
         case Instr::unreachable:
@@ -594,7 +602,7 @@ ExecutionResult execute(Instance& instance, FuncIdx func_idx, const Value* args,
             const auto called_func_idx = read<uint32_t>(pc);
             const auto& called_func_type = instance.module->get_function_type(called_func_idx);
 
-            if (!invoke_function(called_func_type, called_func_idx, instance, stack, depth))
+            if (!invoke_function(called_func_type, called_func_idx, instance, stack, ticks, depth))
                 goto trap;
             break;
         }
@@ -621,7 +629,7 @@ ExecutionResult execute(Instance& instance, FuncIdx func_idx, const Value* args,
                 goto trap;
 
             if (!invoke_function(
-                    actual_type, called_func.func_idx, *called_func.instance, stack, depth))
+                    actual_type, called_func.func_idx, *called_func.instance, stack, ticks, depth))
                 goto trap;
             break;
         }

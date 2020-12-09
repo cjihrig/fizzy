@@ -17,10 +17,10 @@ namespace
 {
 auto function_returning_value(Value value) noexcept
 {
-    return [value](Instance&, const Value*, int) { return value; };
+    return [value](Instance&, const Value*, int64_t&, int) { return value; };
 }
 
-ExecutionResult function_returning_void(Instance&, const Value*, int) noexcept
+ExecutionResult function_returning_void(Instance&, const Value*, int64_t&, int) noexcept
 {
     return Void;
 }
@@ -269,7 +269,8 @@ TEST(api, find_exported_function)
 
     auto opt_function = find_exported_function(*instance, "foo");
     ASSERT_TRUE(opt_function);
-    EXPECT_THAT(opt_function->function(*instance, {}, 0), Result(42));
+    int64_t ticks = 100000;
+    EXPECT_THAT(opt_function->function(*instance, {}, ticks, 0), Result(42));
     EXPECT_TRUE(opt_function->type.inputs.empty());
     ASSERT_EQ(opt_function->type.outputs.size(), 1);
     EXPECT_EQ(opt_function->type.outputs[0], ValType::i32);
@@ -288,7 +289,7 @@ TEST(api, find_exported_function)
         "0061736d010000000105016000017f021001087370656374657374036261720000040401700000050401010102"
         "0606017f0041000b07170403666f6f000001670300037461620100036d656d0200");
 
-    auto bar = [](Instance&, const Value*, int) { return Value{42}; };
+    auto bar = [](Instance&, const Value*, int64_t&, int) { return Value{42}; };
     const auto bar_type = FuncType{{}, {ValType::i32}};
 
     auto instance_reexported_function =
@@ -296,7 +297,8 @@ TEST(api, find_exported_function)
 
     opt_function = find_exported_function(*instance_reexported_function, "foo");
     ASSERT_TRUE(opt_function);
-    EXPECT_THAT(opt_function->function(*instance, {}, 0), Result(42));
+    ticks = 100000;
+    EXPECT_THAT(opt_function->function(*instance, {}, ticks, 0), Result(42));
     EXPECT_TRUE(opt_function->type.inputs.empty());
     ASSERT_EQ(opt_function->type.outputs.size(), 1);
     EXPECT_EQ(opt_function->type.outputs[0], ValType::i32);

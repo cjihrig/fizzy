@@ -27,4 +27,6 @@ const InstructionType* get_instruction_type_table() noexcept;
 /// It may contain invalid value for instructions not needing it.
 const uint8_t* get_instruction_max_align_table() noexcept;
 
+const int16_t* get_instruction_cost_table() noexcept;
+
 }  // namespace fizzy

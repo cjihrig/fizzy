@@ -113,7 +113,7 @@ inline fizzy::ExecutionResult unwrap(const FizzyExecutionResult& result) noexcep
 
 inline auto unwrap(FizzyExternalFn func, void* context) noexcept
 {
-    return [func, context](fizzy::Instance& instance, const fizzy::Value* args,
+    return [func, context](fizzy::Instance& instance, const fizzy::Value* args, int64_t&,
                int depth) noexcept -> fizzy::ExecutionResult {
         const auto result = func(context, wrap(&instance), wrap(args), depth);
         return unwrap(result);
@@ -126,7 +126,8 @@ inline FizzyExternalFunction wrap(fizzy::ExternalFunction external_func)
                                                       const FizzyValue* args,
                                                       int depth) -> FizzyExecutionResult {
         auto* func = static_cast<fizzy::ExternalFunction*>(context);
-        return wrap((func->function)(*unwrap(instance), unwrap(args), depth));
+        auto ticks = std::numeric_limits<int64_t>::max();
+        return wrap((func->function)(*unwrap(instance), unwrap(args), ticks, depth));
     };
 
     auto context = std::make_unique<fizzy::ExternalFunction>(std::move(external_func));

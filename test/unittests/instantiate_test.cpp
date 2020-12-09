@@ -15,12 +15,12 @@ using namespace fizzy::test;
 
 namespace
 {
-ExecutionResult host_fn_1(Instance&, const Value*, int) noexcept
+ExecutionResult host_fn_1(Instance&, const Value*, int64_t&, int) noexcept
 {
     return Trap;
 }
 
-ExecutionResult host_fn_2(Instance&, const Value*, int) noexcept
+ExecutionResult host_fn_2(Instance&, const Value*, int64_t&, int) noexcept
 {
     return Trap;
 }
@@ -37,8 +37,9 @@ uint32_t call_table_func(Instance& instance, size_t idx)
 TEST(instantiate, check_test_host_functions)
 {
     Instance instance{{}, {nullptr, nullptr}, {}, {}, {nullptr, nullptr}, {}, {}, {}, {}};
-    EXPECT_THAT(host_fn_1(instance, nullptr, 0), Traps());
-    EXPECT_THAT(host_fn_2(instance, nullptr, 0), Traps());
+    int64_t ticks = 0;
+    EXPECT_THAT(host_fn_1(instance, nullptr, ticks, 0), Traps());
+    EXPECT_THAT(host_fn_2(instance, nullptr, ticks, 0), Traps());
 }
 
 TEST(instantiate, imported_functions)
