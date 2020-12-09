@@ -8,6 +8,7 @@
 #include <test/utils/wasm_engine.hpp>
 #include <cassert>
 #include <cstring>
+#include <limits>
 
 namespace fizzy::test
 {
@@ -28,7 +29,8 @@ public:
 
 namespace
 {
-FizzyExecutionResult env_adler32(void*, FizzyInstance* instance, const FizzyValue* args, int)
+FizzyExecutionResult env_adler32(
+    void*, FizzyInstance* instance, const FizzyValue* args, int64_t*, int)
 {
     auto* memory = fizzy_get_instance_memory_data(instance);
     assert(memory != nullptr);
@@ -109,8 +111,9 @@ WasmEngine::Result FizzyCEngine::execute(
 {
     static_assert(sizeof(uint64_t) == sizeof(FizzyValue));
     const auto first_arg = reinterpret_cast<const FizzyValue*>(args.data());
+    auto ticks = std::numeric_limits<int64_t>::max();
     const auto status =
-        fizzy_execute(m_instance.get(), static_cast<uint32_t>(func_ref), first_arg, 0);
+        fizzy_execute(m_instance.get(), static_cast<uint32_t>(func_ref), first_arg, &ticks, 0);
     if (status.trapped)
         return {true, std::nullopt};
     else if (status.has_value)

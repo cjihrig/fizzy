@@ -113,21 +113,23 @@ inline fizzy::ExecutionResult unwrap(const FizzyExecutionResult& result) noexcep
 
 inline auto unwrap(FizzyExternalFn func, void* context) noexcept
 {
-    return [func, context](fizzy::Instance& instance, const fizzy::Value* args, int64_t&,
+    return [func, context](fizzy::Instance& instance, const fizzy::Value* args, int64_t& ticks,
                int depth) noexcept -> fizzy::ExecutionResult {
-        const auto result = func(context, wrap(&instance), wrap(args), depth);
+        const auto result = func(context, wrap(&instance), wrap(args), &ticks, depth);
         return unwrap(result);
     };
 }
 
 inline FizzyExternalFunction wrap(fizzy::ExternalFunction external_func)
 {
-    static constexpr FizzyExternalFn c_function = [](void* context, FizzyInstance* instance,
-                                                      const FizzyValue* args,
-                                                      int depth) -> FizzyExecutionResult {
+    static constexpr FizzyExternalFn c_function =
+        [](void* context, FizzyInstance* instance,
+            // clang-tidy wrongly suggests const int64_t* ticks
+            // https://bugs.llvm.org/show_bug.cgi?id=48455
+            // NOLINTNEXTLINE(readability-non-const-parameter)
+            const FizzyValue* args, int64_t* ticks, int depth) -> FizzyExecutionResult {
         auto* func = static_cast<fizzy::ExternalFunction*>(context);
-        auto ticks = std::numeric_limits<int64_t>::max();
-        return wrap((func->function)(*unwrap(instance), unwrap(args), ticks, depth));
+        return wrap((func->function)(*unwrap(instance), unwrap(args), *ticks, depth));
     };
 
     auto context = std::make_unique<fizzy::ExternalFunction>(std::move(external_func));
@@ -452,9 +454,9 @@ size_t fizzy_get_instance_memory_size(FizzyInstance* instance)
 }
 
 FizzyExecutionResult fizzy_execute(
-    FizzyInstance* instance, uint32_t func_idx, const FizzyValue* args, int depth)
+    FizzyInstance* instance, uint32_t func_idx, const FizzyValue* args, int64_t* ticks, int depth)
 {
-    const auto result = fizzy::execute(*unwrap(instance), func_idx, unwrap(args), depth);
+    const auto result = fizzy::execute(*unwrap(instance), func_idx, unwrap(args), *ticks, depth);
     return wrap(result);
 }
 }

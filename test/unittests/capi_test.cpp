@@ -127,7 +127,8 @@ TEST(capi, find_exported_function)
     EXPECT_EQ(function.type.output, FizzyValueTypeI32);
     EXPECT_NE(function.context, nullptr);
     ASSERT_NE(function.function, nullptr);
-    EXPECT_THAT(function.function(function.context, instance, nullptr, 0), CResult(42));
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(function.function(function.context, instance, nullptr, &ticks, 0), CResult(42));
 
     fizzy_free_exported_function(&function);
 
@@ -357,10 +358,11 @@ TEST(capi, instantiate_imported_globals)
     auto instance = fizzy_instantiate(module, nullptr, 0, nullptr, nullptr, globals, 4);
     EXPECT_NE(instance, nullptr);
 
-    EXPECT_THAT(fizzy_execute(instance, 0, nullptr, 0), CResult(42));
-    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, 0), CResult(uint64_t{43}));
-    EXPECT_THAT(fizzy_execute(instance, 2, nullptr, 0), CResult(float(44.4)));
-    EXPECT_THAT(fizzy_execute(instance, 3, nullptr, 0), CResult(45.5));
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance, 0, nullptr, &ticks, 0), CResult(42));
+    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, &ticks, 0), CResult(uint64_t{43}));
+    EXPECT_THAT(fizzy_execute(instance, 2, nullptr, &ticks, 0), CResult(float(44.4)));
+    EXPECT_THAT(fizzy_execute(instance, 3, nullptr, &ticks, 0), CResult(45.5));
 
     fizzy_free_instance(instance);
 
@@ -498,7 +500,7 @@ TEST(capi, resolve_instantiate_function_duplicate)
     auto module = fizzy_parse(wasm.data(), wasm.size());
     ASSERT_NE(module, nullptr);
 
-    FizzyExternalFn host_fn = [](void*, FizzyInstance*, const FizzyValue*, int) {
+    FizzyExternalFn host_fn = [](void*, FizzyInstance*, const FizzyValue*, int64_t*, int) {
         return FizzyExecutionResult{false, true, FizzyValue{42}};
     };
 
@@ -508,8 +510,9 @@ TEST(capi, resolve_instantiate_function_duplicate)
     auto instance = fizzy_resolve_instantiate(module, host_funcs, 1, nullptr, nullptr, nullptr, 0);
     ASSERT_NE(instance, nullptr);
 
-    EXPECT_THAT(fizzy_execute(instance, 0, nullptr, 0), CResult(42));
-    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, 0), CResult(42));
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance, 0, nullptr, &ticks, 0), CResult(42));
+    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, &ticks, 0), CResult(42));
 
     fizzy_free_instance(instance);
 }
@@ -586,7 +589,8 @@ TEST(capi, memory_access)
     memory[0] = 0xaa;
     memory[1] = 0xbb;
 
-    EXPECT_EQ(fizzy_execute(instance, 0, nullptr, 0).value.i64, 0x22bbaa);
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_EQ(fizzy_execute(instance, 0, nullptr, &ticks, 0).value.i64, 0x22bbaa);
 
     fizzy_free_instance(instance);
 }
@@ -624,11 +628,12 @@ TEST(capi, execute)
     auto instance = fizzy_instantiate(module, nullptr, 0, nullptr, nullptr, nullptr, 0);
     ASSERT_NE(instance, nullptr);
 
-    EXPECT_THAT(fizzy_execute(instance, 0, nullptr, 0), CResult());
-    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, 0), CResult(42));
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance, 0, nullptr, &ticks, 0), CResult());
+    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, &ticks, 0), CResult(42));
     FizzyValue args[] = {{42}, {2}};
-    EXPECT_THAT(fizzy_execute(instance, 2, args, 0), CResult(21));
-    EXPECT_THAT(fizzy_execute(instance, 3, nullptr, 0), CTraps());
+    EXPECT_THAT(fizzy_execute(instance, 2, args, &ticks, 0), CResult(21));
+    EXPECT_THAT(fizzy_execute(instance, 3, nullptr, &ticks, 0), CTraps());
 
     fizzy_free_instance(instance);
 }
@@ -647,13 +652,14 @@ TEST(capi, execute_with_host_function)
 
     const FizzyValueType inputs[] = {FizzyValueTypeI32, FizzyValueTypeI32};
 
-    FizzyExternalFunction host_funcs[] = {{{FizzyValueTypeI32, nullptr, 0},
-                                              [](void*, FizzyInstance*, const FizzyValue*, int) {
-                                                  return FizzyExecutionResult{false, true, {42}};
-                                              },
-                                              nullptr},
+    FizzyExternalFunction host_funcs[] = {
+        {{FizzyValueTypeI32, nullptr, 0},
+            [](void*, FizzyInstance*, const FizzyValue*, int64_t*, int) {
+                return FizzyExecutionResult{false, true, {42}};
+            },
+            nullptr},
         {{FizzyValueTypeI32, &inputs[0], 2},
-            [](void*, FizzyInstance*, const FizzyValue* args, int) {
+            [](void*, FizzyInstance*, const FizzyValue* args, int64_t*, int) {
                 return FizzyExecutionResult{false, true, {args[0].i64 / args[1].i64}};
             },
             nullptr}};
@@ -661,10 +667,11 @@ TEST(capi, execute_with_host_function)
     auto instance = fizzy_instantiate(module, host_funcs, 2, nullptr, nullptr, nullptr, 0);
     ASSERT_NE(instance, nullptr);
 
-    EXPECT_THAT(fizzy_execute(instance, 0, nullptr, 0), CResult(42));
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance, 0, nullptr, &ticks, 0), CResult(42));
 
     FizzyValue args[] = {{42}, {2}};
-    EXPECT_THAT(fizzy_execute(instance, 1, args, 0), CResult(21));
+    EXPECT_THAT(fizzy_execute(instance, 1, args, &ticks, 0), CResult(21));
 
     fizzy_free_instance(instance);
 }
@@ -683,7 +690,7 @@ TEST(capi, imported_function_traps)
     ASSERT_NE(module, nullptr);
 
     FizzyExternalFunction host_funcs[] = {{{FizzyValueTypeI32, nullptr, 0},
-        [](void*, FizzyInstance*, const FizzyValue*, int) {
+        [](void*, FizzyInstance*, const FizzyValue*, int64_t*, int) {
             return FizzyExecutionResult{true, false, {}};
         },
         nullptr}};
@@ -691,7 +698,8 @@ TEST(capi, imported_function_traps)
     auto instance = fizzy_instantiate(module, host_funcs, 1, nullptr, nullptr, nullptr, 0);
     ASSERT_NE(instance, nullptr);
 
-    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, 0), CTraps());
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, &ticks, 0), CTraps());
 
     fizzy_free_instance(instance);
 }
@@ -711,7 +719,7 @@ TEST(capi, imported_function_void)
 
     bool called = false;
     FizzyExternalFunction host_funcs[] = {{{},
-        [](void* context, FizzyInstance*, const FizzyValue*, int) {
+        [](void* context, FizzyInstance*, const FizzyValue*, int64_t*, int) {
             *static_cast<bool*>(context) = true;
             return FizzyExecutionResult{false, false, {}};
         },
@@ -720,7 +728,8 @@ TEST(capi, imported_function_void)
     auto instance = fizzy_instantiate(module, host_funcs, 1, nullptr, nullptr, nullptr, 0);
     ASSERT_NE(instance, nullptr);
 
-    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, 0), CResult());
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance, 1, nullptr, &ticks, 0), CResult());
     EXPECT_TRUE(called);
 
     fizzy_free_instance(instance);
@@ -768,7 +777,8 @@ TEST(capi, imported_function_from_another_module)
     ASSERT_NE(instance2, nullptr);
 
     FizzyValue args[] = {{44}, {2}};
-    EXPECT_THAT(fizzy_execute(instance2, 1, args, 0), CResult(42));
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance2, 1, args, &ticks, 0), CResult(42));
 
     fizzy_free_exported_function(&func);
     fizzy_free_instance(instance2);
@@ -808,7 +818,8 @@ TEST(capi, imported_table_from_another_module)
     auto instance2 = fizzy_instantiate(module2, nullptr, 0, &table, nullptr, nullptr, 0);
     ASSERT_NE(instance2, nullptr);
 
-    EXPECT_THAT(fizzy_execute(instance2, 0, nullptr, 0), CResult(42));
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance2, 0, nullptr, &ticks, 0), CResult(42));
 
     fizzy_free_instance(instance2);
     fizzy_free_instance(instance1);
@@ -844,7 +855,8 @@ TEST(capi, imported_memory_from_another_module)
     auto instance2 = fizzy_instantiate(module2, nullptr, 0, nullptr, &memory, nullptr, 0);
     ASSERT_NE(instance2, nullptr);
 
-    EXPECT_THAT(fizzy_execute(instance2, 0, nullptr, 0), CResult(0x00ffaa00));
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance2, 0, nullptr, &ticks, 0), CResult(0x00ffaa00));
 
     fizzy_free_instance(instance2);
     fizzy_free_instance(instance1);
@@ -880,7 +892,8 @@ TEST(capi, imported_global_from_another_module)
     auto instance2 = fizzy_instantiate(module2, nullptr, 0, nullptr, nullptr, &global, 1);
     ASSERT_NE(instance2, nullptr);
 
-    EXPECT_THAT(fizzy_execute(instance2, 0, nullptr, 0), CResult(42));
+    auto ticks = std::numeric_limits<int64_t>::max();
+    EXPECT_THAT(fizzy_execute(instance2, 0, nullptr, &ticks, 0), CResult(42));
 
     fizzy_free_instance(instance2);
     fizzy_free_instance(instance1);

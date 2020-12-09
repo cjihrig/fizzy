@@ -189,8 +189,9 @@ impl Instance {
         args: &[Value],
         depth: i32,
     ) -> ExecutionResult {
+        let mut ticks: i64 = 10000000;
         ExecutionResult {
-            0: sys::fizzy_execute(self.0.as_ptr(), func_idx, args.as_ptr(), depth),
+            0: sys::fizzy_execute(self.0.as_ptr(), func_idx, args.as_ptr(), &mut ticks, depth),
         }
     }
 }

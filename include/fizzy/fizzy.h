@@ -47,7 +47,7 @@ typedef struct FizzyExecutionResult
 /// @param args         Pointer to the argument array. Can be NULL iff function has no inputs.
 /// @param depth        Call stack depth.
 typedef FizzyExecutionResult (*FizzyExternalFn)(
-    void* context, FizzyInstance* instance, const FizzyValue* args, int depth);
+    void* context, FizzyInstance* instance, const FizzyValue* args, int64_t* ticks, int depth);
 
 /// Value type.
 typedef uint8_t FizzyValueType;
@@ -340,7 +340,7 @@ bool fizzy_find_exported_global(
 /// When number of passed arguments or their types are different from the ones defined by the
 /// function type, behaviour is undefined.
 FizzyExecutionResult fizzy_execute(
-    FizzyInstance* instance, uint32_t func_idx, const FizzyValue* args, int depth);
+    FizzyInstance* instance, uint32_t func_idx, const FizzyValue* args, int64_t* ticks, int depth);
 
 #ifdef __cplusplus
 }
