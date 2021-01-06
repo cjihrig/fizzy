@@ -15,18 +15,17 @@ using namespace fizzy::test;
 
 namespace
 {
-ExecuteFunction function_returning_value(Value value) noexcept
+ExecuteFunction function_returning_value(uint64_t value) noexcept
 {
-    static constexpr ExecuteFunctionPtr func = [](void* context, Instance&, const Value*,
+    static constexpr ExecuteFunctionPtr func = [](void* context, void*, Instance&, const Value*,
                                                    int) -> ExecutionResult {
-        return *reinterpret_cast<Value*>(context);
+        return Value{reinterpret_cast<uint64_t>(context)};
     };
 
-    return {func, new Value{value},
-        [](void* context) noexcept { delete static_cast<Value*>(context); }};
+    return {func, reinterpret_cast<void*>((value))};
 }
 
-ExecutionResult function_returning_void(void*, Instance&, const Value*, int) noexcept
+ExecutionResult function_returning_void(void*, void*, Instance&, const Value*, int) noexcept
 {
     return Void;
 }
@@ -95,8 +94,7 @@ TEST(api, resolve_imported_functions)
         {"mod2", "foo2", {ValType::i64, ValType::i32}, std::nullopt, function_returning_void},
     };
 
-    const auto external_functions =
-        resolve_imported_functions(*module, std::move(imported_functions));
+    auto external_functions = resolve_imported_functions(*module, std::move(imported_functions));
 
     EXPECT_EQ(external_functions.size(), 4);
 
@@ -295,11 +293,13 @@ TEST(api, find_exported_function)
         "0061736d010000000105016000017f021001087370656374657374036261720000040401700000050401010102"
         "0606017f0041000b07170403666f6f000001670300037461620100036d656d0200");
 
-    auto bar = [](void*, Instance&, const Value*, int) -> ExecutionResult { return Value{42}; };
+    auto bar = [](void*, void*, Instance&, const Value*, int) -> ExecutionResult {
+        return Value{42};
+    };
     const auto bar_type = FuncType{{}, {ValType::i32}};
 
     auto instance_reexported_function =
-        instantiate(parse(wasm_reexported_function), {{bar, bar_type.inputs, bar_type.outputs}});
+        instantiate(parse(wasm_reexported_function), {{{bar}, bar_type.inputs, bar_type.outputs}});
 
     auto opt_reexported_function = find_exported_function(*instance_reexported_function, "foo");
     ASSERT_TRUE(opt_reexported_function);

@@ -340,13 +340,12 @@ TEST(execute_call, imported_function_call)
 
     const auto module = parse(wasm);
 
-    constexpr auto host_foo = [](void*, Instance&, const Value*, int) -> ExecutionResult {
+    constexpr auto host_foo = [](void*, void*, Instance&, const Value*, int) -> ExecutionResult {
         return Value{42};
     };
     const auto& host_foo_type = module->typesec[0];
 
-    auto instance =
-        instantiate(*module, std::vector<ExternalFunction>(1, {host_foo, host_foo_type}));
+    auto instance = instantiate(*module, {{host_foo, host_foo_type}});
 
     EXPECT_THAT(execute(*instance, 1, {}), Result(42));
 }
@@ -365,7 +364,7 @@ TEST(execute_call, imported_function_call_void)
     const auto module = parse(wasm);
 
     static bool called = false;
-    const auto host_foo = [](void*, Instance&, const Value*, int) {
+    const auto host_foo = [](void*, void*, Instance&, const Value*, int) {
         called = true;
         return Void;
     };
@@ -393,7 +392,7 @@ TEST(execute_call, imported_function_call_with_arguments)
 
     const auto module = parse(wasm);
 
-    auto host_foo = [](void*, Instance&, const Value* args, int) -> ExecutionResult {
+    auto host_foo = [](void*, void*, Instance&, const Value* args, int) -> ExecutionResult {
         return Value{as_uint32(args[0]) * 2};
     };
     const auto host_foo_type = module->typesec[0];
@@ -437,11 +436,11 @@ TEST(execute_call, imported_functions_call_indirect)
     ASSERT_EQ(module->importsec.size(), 2);
     ASSERT_EQ(module->codesec.size(), 2);
 
-    constexpr auto sqr = [](void*, Instance&, const Value* args, int) -> ExecutionResult {
+    constexpr auto sqr = [](void*, void*, Instance&, const Value* args, int) -> ExecutionResult {
         const auto x = as_uint32(args[0]);
         return Value{uint64_t{x} * uint64_t{x}};
     };
-    constexpr auto isqrt = [](void*, Instance&, const Value* args, int) -> ExecutionResult {
+    constexpr auto isqrt = [](void*, void*, Instance&, const Value* args, int) -> ExecutionResult {
         const auto x = as_uint32(args[0]);
         return Value{(11 + uint64_t{x} / 11) / 2};
     };
@@ -483,14 +482,17 @@ TEST(execute_call, imported_function_from_another_module)
         "0061736d0100000001070160027f7f017f020a01026d31037375620000030201000a0a0108002000200110000"
         "b");
 
-    const auto func_idx = fizzy::find_exported_function(*module1, "sub");
+    auto func_idx = fizzy::find_exported_function(*module1, "sub");
     ASSERT_TRUE(func_idx.has_value());
 
-    auto sub = [&instance1, func_idx](Instance&, const Value* args, int depth) -> ExecutionResult {
-        return fizzy::execute(*instance1, *func_idx, args, depth);
-    };
+    //    auto sub = [](void* context1, void* context2, Instance&, const Value* args,
+    //                   int depth) -> ExecutionResult {
+    //        return fizzy::execute(*static_cast<Instance*>(context1),
+    //            **static_cast<std::optional<FuncIdx>*>(context2), args, depth);
+    //    };
 
-    auto instance2 = instantiate(parse(bin2), {{sub, module1->typesec[0]}});
+    auto instance2 = instantiate(parse(bin2),
+        {{{*instance1, *func_idx /*sub, &instance1, &func_idx*/}, module1->typesec[0]}});
 
     EXPECT_THAT(execute(*instance2, 1, {44, 2}), Result(42));
     EXPECT_THAT(execute(*instance2, 0, {44, 2}), Result(42));
@@ -622,13 +624,14 @@ TEST(execute_call, call_initial_depth)
     const auto wasm = from_hex("0061736d01000000010401600000020b01036d6f6403666f6f0000");
 
     auto module = parse(wasm);
-    auto host_foo = [](Instance& /*instance*/, const Value*, int depth) -> ExecutionResult {
+    auto host_foo = [](void*, void*, Instance& /*instance*/, const Value*,
+                        int depth) -> ExecutionResult {
         EXPECT_EQ(depth, 0);
         return Void;
     };
-    const auto host_foo_type = module->typesec[0];
+    const auto& host_foo_type = module->typesec[0];
 
-    auto instance = instantiate(std::move(module), {{host_foo, host_foo_type}});
+    auto instance = instantiate(std::move(module), {{{host_foo}, host_foo_type}});
 
     EXPECT_THAT(execute(*instance, 0, {}), Result());
 }
@@ -659,7 +662,8 @@ TEST(execute_call, execute_imported_max_depth)
         from_hex("0061736d01000000010401600000020b01036d6f6403666f6f0000030201000a040102000b");
 
     auto module = parse(wasm);
-    auto host_foo = [](Instance& /*instance*/, const Value*, int depth) -> ExecutionResult {
+    auto host_foo = [](void*, void*, Instance& /*instance*/, const Value*,
+                        int depth) -> ExecutionResult {
         EXPECT_LE(depth, TestCallStackLimit - 1);
         return Void;
     };
@@ -701,13 +705,11 @@ TEST(execute_call, imported_function_from_another_module_max_depth)
     const auto func_idx = fizzy::find_exported_function(*instance1->module, "f");
     ASSERT_TRUE(func_idx.has_value());
 
-    auto sub = [&instance1, func_idx](Instance&, const Value* args, int depth) -> ExecutionResult {
-        return fizzy::execute(*instance1, *func_idx, args, depth + 1);
-    };
+    auto instance2 = instantiate(
+        std::move(module2), {{{*instance1, *func_idx}, instance1->module->typesec[0].inputs,
+                                instance1->module->typesec[0].outputs}});
 
-    auto instance2 = instantiate(std::move(module2), {{sub, instance1->module->typesec[0]}});
-
-    EXPECT_THAT(execute(*instance2, 2, {}, TestCallStackLimit - 1 - 1), Traps());
+    EXPECT_THAT(execute(*instance2, 2, {}, TestCallStackLimit - 1 - 1), Result());
     EXPECT_THAT(execute(*instance2, 3, {}, TestCallStackLimit - 1 - 1), Result());
 }
 
@@ -777,14 +779,16 @@ TEST(execute_call, call_imported_infinite_recursion)
 
     const auto module = parse(wasm);
     int counter = 0;
-    auto host_foo = [&counter](Instance& instance, const Value* args, int depth) {
+    auto host_foo = [](void* context, void*, Instance& instance, const Value* args,
+                        int depth) -> ExecutionResult {
         EXPECT_LE(depth, TestCallStackLimit - 1);
-        ++counter;
+        auto& cntr = *static_cast<int*>(context);
+        ++cntr;
         return execute(instance, 0, args, depth + 1);
     };
-    const auto host_foo_type = module->typesec[0];
+    const auto& host_foo_type = module->typesec[0];
 
-    auto instance = instantiate(*module, {{host_foo, host_foo_type}});
+    auto instance = instantiate(*module, {{{host_foo, &counter}, host_foo_type}});
 
     counter = 0;
     EXPECT_THAT(execute(*instance, 0, {}), Traps());
@@ -808,15 +812,17 @@ TEST(execute_call, call_imported_interleaved_infinite_recursion)
 
     const auto module = parse(wasm);
     int counter = 0;
-    auto host_foo = [&counter](Instance& instance, const Value* args, int depth) {
+    auto host_foo = [](void* context, void*, Instance& instance, const Value* args,
+                        int depth) -> ExecutionResult {
         // Function $f will increase depth. This means each iteration goes 2 steps deeper.
         EXPECT_LT(depth, CallStackLimit);
-        ++counter;
+        auto& cntr = *static_cast<int*>(context);
+        ++cntr;
         return execute(instance, 1, args, depth + 1);
     };
-    const auto host_foo_type = module->typesec[0];
+    const auto& host_foo_type = module->typesec[0];
 
-    auto instance = instantiate(*module, {{host_foo, host_foo_type}});
+    auto instance = instantiate(*module, {{{host_foo, &counter}, host_foo_type}});
 
     // Start with the imported host function.
     counter = 0;
@@ -837,14 +843,15 @@ TEST(execute_call, call_imported_max_depth_recursion)
     const auto wasm = from_hex("0061736d010000000105016000017f020b01036d6f6403666f6f0000");
 
     const auto module = parse(wasm);
-    auto host_foo = [](Instance& instance, const Value* args, int depth) -> ExecutionResult {
+    auto host_foo = [](void*, void*, Instance& instance, const Value* args,
+                        int depth) -> ExecutionResult {
         if (depth == TestCallStackLimit - 1)
             return Value{uint32_t{1}};  // Terminate recursion on the max depth.
         return execute(instance, 0, args, depth + 1);
     };
-    const auto host_foo_type = module->typesec[0];
+    const auto& host_foo_type = module->typesec[0];
 
-    auto instance = instantiate(*module, {{host_foo, host_foo_type}});
+    auto instance = instantiate(*module, {{{host_foo}, host_foo_type}});
 
     EXPECT_THAT(execute(*instance, 0, {}), Result(uint32_t{1}));
 }
@@ -861,15 +868,16 @@ TEST(execute_call, call_via_imported_max_depth_recursion)
         "0061736d010000000105016000017f020b01036d6f6403666f6f0000030201000a0601040010000b");
 
     const auto module = parse(wasm);
-    auto host_foo = [](Instance& instance, const Value* args, int depth) -> ExecutionResult {
+    auto host_foo = [](void*, void*, Instance& instance, const Value* args,
+                        int depth) -> ExecutionResult {
         // Function $f will increase depth. This means each iteration goes 2 steps deeper.
         if (depth == TestCallStackLimit - 1)
             return Value{uint32_t{1}};  // Terminate recursion on the max depth.
         return execute(instance, 1, args, depth + 1);
     };
-    const auto host_foo_type = module->typesec[0];
+    const auto& host_foo_type = module->typesec[0];
 
-    auto instance = instantiate(*module, {{host_foo, host_foo_type}});
+    auto instance = instantiate(*module, {{{host_foo}, host_foo_type}});
 
     EXPECT_THAT(execute(*instance, 1, {}), Result(uint32_t{1}));
 }
