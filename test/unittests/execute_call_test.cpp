@@ -340,10 +340,13 @@ TEST(execute_call, imported_function_call)
 
     const auto module = parse(wasm);
 
-    constexpr auto host_foo = [](Instance&, const Value*, int) { return Value{42}; };
-    const auto host_foo_type = module->typesec[0];
+    constexpr auto host_foo = [](void*, Instance&, const Value*, int) -> ExecutionResult {
+        return Value{42};
+    };
+    const auto& host_foo_type = module->typesec[0];
 
-    auto instance = instantiate(*module, {{host_foo, host_foo_type}});
+    auto instance =
+        instantiate(*module, std::vector<ExternalFunction>(1, {host_foo, host_foo_type}));
 
     EXPECT_THAT(execute(*instance, 1, {}), Result(42));
 }
@@ -361,8 +364,8 @@ TEST(execute_call, imported_function_call_void)
 
     const auto module = parse(wasm);
 
-    bool called = false;
-    const auto host_foo = [&called](Instance&, const Value*, int) {
+    static bool called = false;
+    const auto host_foo = [](void*, Instance&, const Value*, int) {
         called = true;
         return Void;
     };
@@ -390,7 +393,9 @@ TEST(execute_call, imported_function_call_with_arguments)
 
     const auto module = parse(wasm);
 
-    auto host_foo = [](Instance&, const Value* args, int) { return Value{as_uint32(args[0]) * 2}; };
+    auto host_foo = [](void*, Instance&, const Value* args, int) -> ExecutionResult {
+        return Value{as_uint32(args[0]) * 2};
+    };
     const auto host_foo_type = module->typesec[0];
 
     auto instance = instantiate(*module, {{host_foo, host_foo_type}});
@@ -432,11 +437,11 @@ TEST(execute_call, imported_functions_call_indirect)
     ASSERT_EQ(module->importsec.size(), 2);
     ASSERT_EQ(module->codesec.size(), 2);
 
-    constexpr auto sqr = [](Instance&, const Value* args, int) {
+    constexpr auto sqr = [](void*, Instance&, const Value* args, int) -> ExecutionResult {
         const auto x = as_uint32(args[0]);
         return Value{uint64_t{x} * uint64_t{x}};
     };
-    constexpr auto isqrt = [](Instance&, const Value* args, int) {
+    constexpr auto isqrt = [](void*, Instance&, const Value* args, int) -> ExecutionResult {
         const auto x = as_uint32(args[0]);
         return Value{(11 + uint64_t{x} / 11) / 2};
     };

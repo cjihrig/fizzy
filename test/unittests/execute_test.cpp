@@ -810,7 +810,7 @@ TEST(execute, imported_function)
     const auto module = parse(wasm);
     ASSERT_EQ(module->typesec.size(), 1);
 
-    constexpr auto host_foo = [](Instance&, const Value* args, int) {
+    constexpr auto host_foo = [](void*, Instance&, const Value* args, int) -> ExecutionResult {
         return Value{as_uint32(args[0]) + as_uint32(args[1])};
     };
 
@@ -830,10 +830,10 @@ TEST(execute, imported_two_functions)
     const auto module = parse(wasm);
     ASSERT_EQ(module->typesec.size(), 1);
 
-    constexpr auto host_foo1 = [](Instance&, const Value* args, int) {
+    constexpr auto host_foo1 = [](void*, Instance&, const Value* args, int) -> ExecutionResult {
         return Value{as_uint32(args[0]) + as_uint32(args[1])};
     };
-    constexpr auto host_foo2 = [](Instance&, const Value* args, int) {
+    constexpr auto host_foo2 = [](void*, Instance&, const Value* args, int) -> ExecutionResult {
         return Value{as_uint32(args[0]) * as_uint32(args[1])};
     };
 

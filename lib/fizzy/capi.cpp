@@ -111,13 +111,22 @@ inline fizzy::ExecutionResult unwrap(const FizzyExecutionResult& result) noexcep
         return unwrap(result.value);
 }
 
-inline auto unwrap(FizzyExternalFn func, void* context) noexcept
+inline fizzy::ExecuteFunction unwrap(FizzyExternalFn func, void* c_context) noexcept
 {
-    return [func, context](fizzy::Instance& instance, const fizzy::Value* args,
-               int depth) noexcept -> fizzy::ExecutionResult {
-        const auto result = func(context, wrap(&instance), wrap(args), depth);
-        return unwrap(result);
+    auto context = std::make_unique<std::pair<FizzyExternalFn, void*>>(func, c_context);
+
+    auto context_deleter = [](void* context) noexcept {
+        delete static_cast<std::pair<FizzyExternalFn, void*>*>(context);
     };
+
+    static constexpr fizzy::ExecuteFunctionPtr function =
+        [](void* context, fizzy::Instance& instance, const fizzy::Value* args,
+            int depth) -> fizzy::ExecutionResult {
+        auto [c_func, c_context] = *static_cast<std::pair<FizzyExternalFn, void*>*>(context);
+        return unwrap(c_func(c_context, wrap(&instance), wrap(args), depth));
+    };
+
+    return fizzy::ExecuteFunction(function, context.release(), context_deleter);
 }
 
 inline FizzyExternalFunction wrap(fizzy::ExternalFunction external_func)
@@ -430,7 +439,8 @@ FizzyInstance* fizzy_resolve_instantiate(const FizzyModule* c_module,
         auto globals = unwrap(imported_globals, imported_globals_size);
 
         std::unique_ptr<const fizzy::Module> module{unwrap(c_module)};
-        auto resolved_imports = fizzy::resolve_imported_functions(*module, imported_functions);
+        auto resolved_imports =
+            fizzy::resolve_imported_functions(*module, std::move(imported_functions));
 
         auto instance = fizzy::instantiate(std::move(module), std::move(resolved_imports),
             std::move(table), std::move(memory), std::move(globals));
