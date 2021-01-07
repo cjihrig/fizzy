@@ -1225,7 +1225,7 @@ TEST(capi, get_import_count)
     fizzy_free_module(module);
 }
 
-TEST(capi, get_import_type)
+TEST(capi, get_import_description)
 {
     /* wat2wasm
       (func (import "m" "f1") (result i32))
@@ -1243,14 +1243,14 @@ TEST(capi, get_import_type)
     ASSERT_NE(module, nullptr);
     ASSERT_EQ(fizzy_get_import_count(module), 6);
 
-    const auto import0 = fizzy_get_import_type(module, 0);
+    const auto import0 = fizzy_get_import_description(module, 0);
     EXPECT_STREQ(import0.module, "m");
     EXPECT_STREQ(import0.name, "f1");
     EXPECT_EQ(import0.kind, FizzyExternalKindFunction);
     EXPECT_EQ(import0.desc.function_type.inputs_size, 0);
     EXPECT_EQ(import0.desc.function_type.output, FizzyValueTypeI32);
 
-    const auto import1 = fizzy_get_import_type(module, 1);
+    const auto import1 = fizzy_get_import_description(module, 1);
     EXPECT_STREQ(import1.module, "m");
     EXPECT_STREQ(import1.name, "f2");
     EXPECT_EQ(import1.kind, FizzyExternalKindFunction);
@@ -1258,28 +1258,28 @@ TEST(capi, get_import_type)
     EXPECT_EQ(import1.desc.function_type.inputs[0], FizzyValueTypeI64);
     EXPECT_EQ(import1.desc.function_type.output, FizzyValueTypeVoid);
 
-    const auto import2 = fizzy_get_import_type(module, 2);
+    const auto import2 = fizzy_get_import_description(module, 2);
     EXPECT_STREQ(import2.module, "m");
     EXPECT_STREQ(import2.name, "g1");
     EXPECT_EQ(import2.kind, FizzyExternalKindGlobal);
     EXPECT_EQ(import2.desc.global_type.value_type, FizzyValueTypeI32);
     EXPECT_FALSE(import2.desc.global_type.is_mutable);
 
-    const auto import3 = fizzy_get_import_type(module, 3);
+    const auto import3 = fizzy_get_import_description(module, 3);
     EXPECT_STREQ(import3.module, "m");
     EXPECT_STREQ(import3.name, "g2");
     EXPECT_EQ(import3.kind, FizzyExternalKindGlobal);
     EXPECT_EQ(import3.desc.global_type.value_type, FizzyValueTypeF64);
     EXPECT_TRUE(import3.desc.global_type.is_mutable);
 
-    const auto import4 = fizzy_get_import_type(module, 4);
+    const auto import4 = fizzy_get_import_description(module, 4);
     EXPECT_STREQ(import4.module, "m");
     EXPECT_STREQ(import4.name, "t");
     EXPECT_EQ(import4.kind, FizzyExternalKindTable);
     EXPECT_EQ(import4.desc.table_limits.min, 10);
     EXPECT_FALSE(import4.desc.table_limits.has_max);
 
-    const auto import5 = fizzy_get_import_type(module, 5);
+    const auto import5 = fizzy_get_import_description(module, 5);
     EXPECT_STREQ(import5.module, "m");
     EXPECT_STREQ(import5.name, "mem");
     EXPECT_EQ(import5.kind, FizzyExternalKindMemory);
@@ -1301,7 +1301,7 @@ TEST(capi, import_name_after_instantiate)
     ASSERT_NE(module, nullptr);
     ASSERT_EQ(fizzy_get_import_count(module), 1);
 
-    const auto import0 = fizzy_get_import_type(module, 0);
+    const auto import0 = fizzy_get_import_description(module, 0);
     EXPECT_STREQ(import0.module, "m");
     EXPECT_STREQ(import0.name, "f1");
 

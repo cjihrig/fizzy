@@ -142,11 +142,11 @@ typedef enum FizzyExternalKind
     FizzyExternalKindGlobal
 } FizzyExternalKind;
 
-/// Import definition.
+/// Import description.
 ///
-/// @note Only one member of FizzyImportType::desc union corresponding to FizzyImportType::kind is
-/// defined for each import.
-typedef struct FizzyImportType
+/// @note Only one member of FizzyImportDescription::desc union corresponding to
+/// FizzyImportDescription::kind is defined for each import.
+typedef struct FizzyImportDescription
 {
     const char* module;
     const char* name;
@@ -158,7 +158,7 @@ typedef struct FizzyImportType
         FizzyLimits table_limits;
         FizzyGlobalType global_type;
     } desc;
-} FizzyImportType;
+} FizzyImportDescription;
 
 /// Imported function.
 typedef struct FizzyImportedFunction
@@ -216,16 +216,16 @@ FizzyFunctionType fizzy_get_type(const FizzyModule* module, uint32_t type_idx);
 /// @return           Number of imports in the module.
 uint32_t fizzy_get_import_count(const FizzyModule* module);
 
-/// Get the import type defined in the module.
+/// Get the import description defined in the module.
 ///
 /// @param  module        Pointer to module. Cannot be NULL.
 /// @param  import_idx    Import index. Behaviour is undefined if index is not valid according
 ///                       to module definition.
-/// @return               Type of the import corresponding to the index. FizzyImportType::module and
-///                       FizzyImportType::name fields point to the string stored inside the module
-///                       and are valid as long as module is alive (including after successful
-///                       instantiation.)
-FizzyImportType fizzy_get_import_type(const FizzyModule* module, uint32_t import_idx);
+/// @return               Type of the import corresponding to the index.
+///                       FizzyImportDescription::module and FizzyImportDescription::name fields
+///                       point to the string stored inside the module and are valid as long as
+///                       module is alive (including after successful instantiation.)
+FizzyImportDescription fizzy_get_import_description(const FizzyModule* module, uint32_t import_idx);
 
 /// Get type of the function defined in the module.
 ///
