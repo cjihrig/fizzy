@@ -9,7 +9,7 @@
 
 namespace fizzy::test
 {
-constexpr std::pair<uint32_t, uint32_t> popcount32_test_cases[]{
+constexpr std::pair<uint32_t, int> popcount32_test_cases[]{
     {0, 0},
     {1, 1},
     {0x7f, 7},
@@ -24,7 +24,7 @@ constexpr std::pair<uint32_t, uint32_t> popcount32_test_cases[]{
     {0x0055ffaa, 16},
 };
 
-constexpr std::pair<uint64_t, uint64_t> popcount64_test_cases[]{
+constexpr std::pair<uint64_t, int> popcount64_test_cases[]{
     {0, 0},
     {1, 1},
     {0x7f, 7},
@@ -39,7 +39,7 @@ constexpr std::pair<uint64_t, uint64_t> popcount64_test_cases[]{
     {0x0055ffaa0055ffaa, 32},
 };
 
-constexpr std::pair<uint32_t, uint32_t> countl_zero32_test_cases[]{
+constexpr std::pair<uint32_t, int> countl_zero32_test_cases[]{
     {0, 32},
     {1, 31},
     {0x7f, 25},
@@ -54,7 +54,7 @@ constexpr std::pair<uint32_t, uint32_t> countl_zero32_test_cases[]{
     {0x0055ffaa, 9},
 };
 
-constexpr std::pair<uint64_t, uint64_t> countl_zero64_test_cases[]{
+constexpr std::pair<uint64_t, int> countl_zero64_test_cases[]{
     {0, 64},
     {1, 63},
     {0x7f, 57},
@@ -69,7 +69,7 @@ constexpr std::pair<uint64_t, uint64_t> countl_zero64_test_cases[]{
     {0x0055ffaa0055ffaa, 9},
 };
 
-constexpr std::pair<uint32_t, uint32_t> countr_zero32_test_cases[]{
+constexpr std::pair<uint32_t, int> countr_zero32_test_cases[]{
     {0, 32},
     {1, 0},
     {0x7f, 0},
@@ -84,7 +84,7 @@ constexpr std::pair<uint32_t, uint32_t> countr_zero32_test_cases[]{
     {0x0055ffaa, 1},
 };
 
-constexpr std::pair<uint64_t, uint64_t> countr_zero64_test_cases[]{
+constexpr std::pair<uint64_t, int> countr_zero64_test_cases[]{
     {0, 64},
     {1, 0},
     {0x7f, 0},
