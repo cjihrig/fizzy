@@ -270,15 +270,15 @@ TEST(execute_numeric, i64_ge_u)
 TEST(execute_numeric, i32_clz)
 {
     const auto i32_clz = create_unary_operation_executor(Instr::i32_clz);
-    EXPECT_THAT(i32_clz(0), Result(32));
-    EXPECT_THAT(i32_clz(0x7f), Result(32 - 7));
+    for (const auto& [input, expected] : countl_zero32_test_cases)
+        EXPECT_THAT(i32_clz(input), Result(expected)) << input;
 }
 
 TEST(execute_numeric, i32_ctz)
 {
     const auto i32_ctz = create_unary_operation_executor(Instr::i32_ctz);
-    EXPECT_THAT(i32_ctz(0), Result(32));
-    EXPECT_THAT(i32_ctz(0x80), Result(7));
+    for (const auto& [input, expected] : countr_zero32_test_cases)
+        EXPECT_THAT(i32_ctz(input), Result(expected)) << input;
 }
 
 TEST(execute_numeric, i32_popcnt)
@@ -519,15 +519,15 @@ TEST(execute_numeric, i64_extend_i32_u_2)
 TEST(execute_numeric, i64_clz)
 {
     const auto i64_clz = create_unary_operation_executor(Instr::i64_clz);
-    EXPECT_THAT(i64_clz(0_u64), Result(64));
-    EXPECT_THAT(i64_clz(0x7f_u64), Result(64 - 7));
+    for (const auto& [input, expected] : countl_zero64_test_cases)
+        EXPECT_THAT(i64_clz(input), Result(expected)) << input;
 }
 
 TEST(execute_numeric, i64_ctz)
 {
     const auto i64_ctz = create_unary_operation_executor(Instr::i64_ctz);
-    EXPECT_THAT(i64_ctz(0_u64), Result(64));
-    EXPECT_THAT(i64_ctz(0x80_u64), Result(7));
+    for (const auto& [input, expected] : countr_zero64_test_cases)
+        EXPECT_THAT(i64_ctz(input), Result(expected)) << input;
 }
 
 TEST(execute_numeric, i64_popcnt)
