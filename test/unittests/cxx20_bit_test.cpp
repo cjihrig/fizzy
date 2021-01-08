@@ -72,22 +72,12 @@ TEST(cxx20_bit, countl_zero64)
 
 TEST(cxx20_bit, countr_zero32)
 {
-    EXPECT_EQ(countr_zero(uint32_t{0}), 32);
-    EXPECT_EQ(countr_zero(uint32_t{0xffffffff}), 0);
-    EXPECT_EQ(countr_zero(uint32_t{0x0000ffff}), 0);
-    EXPECT_EQ(countr_zero(uint32_t{0xffff0000}), 16);
-    EXPECT_EQ(countr_zero(uint32_t{0x00ffff00}), 8);
-    EXPECT_EQ(countr_zero(uint32_t{0x00ff00ff}), 0);
-    EXPECT_EQ(countr_zero(uint32_t{0xff00ff00}), 0);
+    for (const auto& [input, expected] : countr_zero32_test_cases)
+        EXPECT_EQ(countr_zero(input), expected) << input;
 }
 
 TEST(cxx20_bit, countr_zero64)
 {
-    EXPECT_EQ(countr_zero(uint64_t{0}), 64);
-    EXPECT_EQ(countr_zero(uint64_t{0xffffffffffffffff}), 0);
-    EXPECT_EQ(countr_zero(uint64_t{0xffffffff00000000}), 32);
-    EXPECT_EQ(countr_zero(uint64_t{0x00000000ffffffff}), 0);
-    EXPECT_EQ(countr_zero(uint64_t{0x0000ffffffff0000}), 16);
-    EXPECT_EQ(countr_zero(uint64_t{0x00ff00ff00ff00ff}), 0);
-    EXPECT_EQ(countr_zero(uint64_t{0xff00ff00ff00ff00}), 0);
+    for (const auto& [input, expected] : countr_zero64_test_cases)
+        EXPECT_EQ(countr_zero(input), expected) << input;
 }
