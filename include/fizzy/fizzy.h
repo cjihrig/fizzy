@@ -133,6 +133,33 @@ typedef struct FizzyExternalGlobal
     FizzyGlobalType type;
 } FizzyExternalGlobal;
 
+/// External kind.
+typedef enum FizzyExternalKind
+{
+    FizzyExternalKindFunction,
+    FizzyExternalKindTable,
+    FizzyExternalKindMemory,
+    FizzyExternalKindGlobal
+} FizzyExternalKind;
+
+/// Import definition.
+///
+/// @note Only one member of FizzyImportType::desc union corresponding to FizzyImportType::kind is
+/// defined for each import.
+typedef struct FizzyImportType
+{
+    const char* module;
+    const char* name;
+    FizzyExternalKind kind;
+    union
+    {
+        FizzyFunctionType function_type;
+        FizzyLimits memory_limits;
+        FizzyLimits table_limits;
+        FizzyGlobalType global_type;
+    } desc;
+} FizzyImportType;
+
 /// Imported function.
 typedef struct FizzyImportedFunction
 {
@@ -182,6 +209,23 @@ uint32_t fizzy_get_type_count(const FizzyModule* module);
 ///                     to module definition.
 /// @return             Type corresponding to the index.
 FizzyFunctionType fizzy_get_type(const FizzyModule* module, uint32_t type_idx);
+
+/// Get number of imports defined in the module.
+///
+/// @param  module    Pointer to module. Cannot be NULL.
+/// @return           Number of imports in the module.
+uint32_t fizzy_get_import_count(const FizzyModule* module);
+
+/// Get the import type defined in the module.
+///
+/// @param  module        Pointer to module. Cannot be NULL.
+/// @param  import_idx    Import index. Behaviour is undefined if index is not valid according
+///                       to module definition.
+/// @return               Type of the import corresponding to the index. FizzyImportType::module and
+///                       FizzyImportType::name fields point to the string stored inside the module
+///                       and are valid as long as module is alive (including after successful
+///                       instantiation.)
+FizzyImportType fizzy_get_import_type(const FizzyModule* module, uint32_t import_idx);
 
 /// Get type of the function defined in the module.
 ///
