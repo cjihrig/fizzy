@@ -133,6 +133,27 @@ typedef struct FizzyExternalGlobal
     FizzyGlobalType type;
 } FizzyExternalGlobal;
 
+/// External kind.
+typedef enum FizzyExternalKind
+{
+    FizzyExternalKindFunction,
+    FizzyExternalKindTable,
+    FizzyExternalKindMemory,
+    FizzyExternalKindGlobal
+} FizzyExternalKind;
+
+/// Export description.
+typedef struct FizzyExportDescription
+{
+    /// Export name
+    const char* name;
+    /// Export kind
+    FizzyExternalKind kind;
+    /// Index of exported function or table or memory or global.
+    /// #kind determines what is this index of.
+    uint32_t index;
+} FizzyExportDescription;
+
 /// Imported function.
 typedef struct FizzyImportedFunction
 {
@@ -221,6 +242,23 @@ uint32_t fizzy_get_global_count(const FizzyModule* module);
 ///
 /// @note  All module global indices are greater than all imported global indices.
 FizzyGlobalType fizzy_get_global_type(const FizzyModule* module, uint32_t global_idx);
+
+/// Get number of exports defined in the module.
+///
+/// @param  module    Pointer to module. Cannot be NULL.
+/// @return           Number of exports in the module.
+uint32_t fizzy_get_export_count(const FizzyModule* module);
+
+/// Get the import description defined in the module.
+///
+/// @param  module        Pointer to module. Cannot be NULL.
+/// @param  export_idx    Export index. Behaviour is undefined if index is not valid according
+///                       to module definition.
+/// @return               Description of the export corresponding to the index.
+///                       FizzyExportDescription::name field points to the string stored inside the
+///                       module and is valid as long as module is alive (including after successful
+///                       instantiation.)
+FizzyExportDescription fizzy_get_export_description(const FizzyModule* module, uint32_t export_idx);
 
 /// Find index of exported function by name.
 ///
